@@ -1,0 +1,10 @@
+# Copy this file to terraform.tfvars and fill in your values.
+# Do NOT commit terraform.tfvars (it's already in .gitignore).
+
+aws_region   = "us-east-1"
+project_name = "smartpicks"
+environment  = "staging"
+
+# Find this in the IAM console: Roles -> LabRole -> ARN
+# Format: arn:aws:iam::<ACCOUNT_ID>:role/LabRole
+lab_role_arn = "arn:aws:iam::123456789012:role/LabRole"
