@@ -165,14 +165,3 @@ smartpicks/
 ├── tests/test_scoring.py     # Unit tests
 └── .github/workflows/deploy.yml
 ```
-
-## AI-Generated Code Disclosure
-
-Per course requirements: the majority of this project's boilerplate
-(Terraform resource definitions, Lambda handler scaffolding, CI/CD workflow
-structure) was generated with AI assistance (Claude) based on architectural
-decisions made by the author. Core recommendation-scoring logic
-(`scoring.py`) and its design (co-purchase matrix + category affinity) were
-reviewed, tested, and adapted by the author. Approximate AI-generated
-proportion: ~60-70% of total lines, concentrated in infrastructure
-boilerplate rather than business logic.
