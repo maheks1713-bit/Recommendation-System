@@ -18,3 +18,8 @@ output "product_catalog_table" {
 output "event_archive_bucket" {
   value = aws_s3_bucket.event_archive.bucket
 }
+
+output "frontend_url" {
+  description = "Public HTTPS URL of the demo frontend"
+  value       = "https://${aws_s3_bucket.frontend.bucket_regional_domain_name}/index.html"
+}
