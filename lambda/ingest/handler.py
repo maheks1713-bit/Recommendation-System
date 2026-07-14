@@ -11,6 +11,7 @@ Env vars:
 """
 import json
 import os
+import re
 import time
 import uuid
 import boto3
@@ -25,6 +26,7 @@ table = dynamodb.Table(USER_EVENTS_TABLE)
 
 REQUIRED_FIELDS = {"userId", "productId", "eventType"}
 VALID_EVENT_TYPES = {"view", "purchase", "add_to_cart"}
+ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
 
 def handler(event, context):
@@ -39,6 +41,13 @@ def handler(event, context):
 
     if body["eventType"] not in VALID_EVENT_TYPES:
         return _response(400, {"error": f"eventType must be one of {sorted(VALID_EVENT_TYPES)}"})
+
+    user_id, product_id = body["userId"], body["productId"]
+    valid_ids = all(
+        isinstance(v, str) and ID_PATTERN.match(v) for v in (user_id, product_id)
+    )
+    if not valid_ids:
+        return _response(400, {"error": "userId and productId must match ^[A-Za-z0-9_-]{1,64}$"})
 
     event_id = str(uuid.uuid4())
     timestamp = int(time.time())

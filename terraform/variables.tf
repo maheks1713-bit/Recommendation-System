@@ -23,3 +23,15 @@ variable "lab_role_arn" {
   description = "ARN of the pre-existing AWS Academy LabRole used by all Lambda functions"
   type        = string
 }
+
+variable "api_key" {
+  description = "Shared secret clients must send as the x-api-key header on every API request"
+  type        = string
+  sensitive   = true
+}
+
+variable "alert_email" {
+  description = "Email address subscribed to the CloudWatch alarm SNS topic"
+  type        = string
+  default     = "maheks1713@gmail.com"
+}

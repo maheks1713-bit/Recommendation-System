@@ -8,6 +8,7 @@ on:
 
 env:
   TF_VAR_lab_role_arn: ${{ secrets.LAB_ROLE_ARN }}
+  TF_VAR_api_key: ${{ secrets.API_KEY }}
   AWS_REGION: us-east-1
 
 jobs:

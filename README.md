@@ -67,6 +67,42 @@ job (for scheduled batch scoring) or a Bedrock-based embedding similarity
 model (for semantic content-based matching) — see the report's Tech Stack
 Justification section for the full trade-off discussion.
 
+## Security
+
+This project applies a scoped-down version of AWS's [defense-in-depth
+serverless security
+model](https://aws.amazon.com/blogs/security/building-an-ai-powered-defense-in-depth-security-architecture-for-serverless-microservices/),
+adapted to what an AWS Academy Learner Lab account actually allows:
+
+**Implemented:**
+- **API entry-point auth** — every route (`POST /events`,
+  `GET /recommendations/{userId}`) is gated by a `REQUEST`-type Lambda
+  authorizer (`lambda/authorizer/`) that checks a shared `x-api-key` header.
+- **Input validation** — `userId`/`productId` are validated against
+  `^[A-Za-z0-9_-]{1,64}$` before being used as DynamoDB keys or S3 key path
+  segments, rejecting malformed/oversized/path-traversal-shaped input.
+- **Data protection** — DynamoDB tables have point-in-time recovery and
+  explicit encryption-at-rest enabled; the S3 event archive has SSE-S3
+  encryption, versioning, a full public-access block, and a bucket policy
+  denying any request that isn't over TLS.
+- **Continuous monitoring** — CloudWatch alarms on Lambda errors and API
+  Gateway 5xx spikes publish to an SNS topic with an email subscription.
+
+**Explicitly skipped (with reasons):**
+| Blog layer | Why skipped |
+|---|---|
+| AWS WAF | Cost/permission-boundary risk not justified for this project's scale |
+| Cognito user pools | No real end users — a shared API key is a proportionate substitute for a machine-to-machine demo API |
+| VPC isolation / NAT | No private resources (RDS, etc.) to protect; a NAT Gateway adds cost for no benefit here |
+| Secrets Manager | No secrets beyond the API key, which fits in a Lambda env var; rotation needs IAM policies Academy blocks |
+| AWS Signer / Amazon Q / Inspector | Not available on Academy Learner Lab accounts |
+| GuardDuty / CloudTrail | Academy's permission boundary blocks enabling account-level security services |
+| Shield Advanced / Bedrock security agents | Paid enterprise features out of scope for a lab-account project |
+
+As with the SageMaker trade-off above, the constant is the Learner Lab's
+`LabRole`-only IAM model — every control here had to be achievable without
+creating a single IAM role or policy.
+
 ## Prerequisites
 
 - Terraform >= 1.5.0
@@ -88,8 +124,10 @@ cd smartpicks
 
 # 2. Configure Terraform variables
 cp terraform/terraform.tfvars.example terraform/terraform.tfvars
-# Edit terraform.tfvars and set lab_role_arn to your LabRole ARN
-# (IAM console -> Roles -> LabRole -> copy ARN)
+# Edit terraform.tfvars and set:
+#  - lab_role_arn to your LabRole ARN (IAM console -> Roles -> LabRole -> copy ARN)
+#  - api_key to a random secret, e.g.: openssl rand -hex 32
+#  - alert_email to where CloudWatch alarm emails should go
 
 # 3. Deploy infrastructure
 cd terraform
@@ -108,10 +146,12 @@ python scripts/seed_data.py \
 #    schedule) so RecommendationCache is populated:
 aws lambda invoke --function-name smartpicks-recompute-staging /tmp/out.json
 
-# 6. Test the API
-curl https://<api_endpoint>/recommendations/user1
+# 6. Test the API (every route requires the x-api-key header)
+curl https://<api_endpoint>/recommendations/user1 \
+  -H "x-api-key: <your-api_key-value>"
 curl -X POST https://<api_endpoint>/events \
   -H "Content-Type: application/json" \
+  -H "x-api-key: <your-api_key-value>" \
   -d '{"userId":"user6","productId":"p3","eventType":"purchase"}'
 ```
 
@@ -133,6 +173,8 @@ Required GitHub repo secrets:
 - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` — from
   your Learner Lab session's AWS CLI credentials
 - `LAB_ROLE_ARN` — your `LabRole` ARN
+- `API_KEY` — same random secret you put in `terraform.tfvars`'s `api_key`,
+  so the deployed API and your local `curl` calls use the same value
 
 **Known lab constraint:** AWS Academy Learner Lab credentials are temporary
 and expire when the lab session ends (typically a few hours), and rotate

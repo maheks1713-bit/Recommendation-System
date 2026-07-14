@@ -8,3 +8,10 @@ environment  = "staging"
 # Find this in the IAM console: Roles -> LabRole -> ARN
 # Format: arn:aws:iam::<ACCOUNT_ID>:role/LabRole
 lab_role_arn = "arn:aws:iam::123456789012:role/LabRole"
+
+# Shared secret required as the x-api-key header on every API request.
+# Generate one yourself, e.g.: openssl rand -hex 32
+api_key = "changeme-generate-a-random-secret"
+
+# Where CloudWatch alarm notifications are sent (SNS email subscription)
+alert_email = "you@example.com"

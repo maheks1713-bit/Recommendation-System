@@ -16,6 +16,12 @@ data "archive_file" "recommend_zip" {
   output_path = "${path.module}/../build/recommend.zip"
 }
 
+data "archive_file" "authorizer_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/../lambda/authorizer"
+  output_path = "${path.module}/../build/authorizer.zip"
+}
+
 resource "aws_lambda_function" "ingest" {
   function_name    = "${var.project_name}-ingest-${var.environment}"
   filename         = data.archive_file.ingest_zip.output_path
@@ -70,6 +76,23 @@ resource "aws_lambda_function" "recommend" {
   }
 }
 
+resource "aws_lambda_function" "authorizer" {
+  function_name    = "${var.project_name}-authorizer-${var.environment}"
+  filename         = data.archive_file.authorizer_zip.output_path
+  source_code_hash = data.archive_file.authorizer_zip.output_base64sha256
+  handler          = "handler.handler"
+  runtime          = "python3.12"
+  role             = var.lab_role_arn
+  timeout          = 5
+  memory_size      = 128
+
+  environment {
+    variables = {
+      API_KEY = var.api_key
+    }
+  }
+}
+
 resource "aws_cloudwatch_log_group" "ingest_logs" {
   name              = "/aws/lambda/${aws_lambda_function.ingest.function_name}"
   retention_in_days = 14
@@ -82,5 +105,10 @@ resource "aws_cloudwatch_log_group" "recompute_logs" {
 
 resource "aws_cloudwatch_log_group" "recommend_logs" {
   name              = "/aws/lambda/${aws_lambda_function.recommend.function_name}"
+  retention_in_days = 14
+}
+
+resource "aws_cloudwatch_log_group" "authorizer_logs" {
+  name              = "/aws/lambda/${aws_lambda_function.authorizer.function_name}"
   retention_in_days = 14
 }

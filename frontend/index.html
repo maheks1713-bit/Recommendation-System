@@ -1,0 +1,482 @@
+<title>SmartPicks — Recommendation Demo</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --navy: #232f3e;
+    --navy-light: #2f3e50;
+    --orange: #ff9900;
+    --green: #1d8754;
+    --red: #d13212;
+    --bg: #f4f6f8;
+    --card: #ffffff;
+    --text: #232f3e;
+    --muted: #667085;
+    --border: #e2e6ea;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    background: var(--navy);
+    color: #fff;
+    padding: 20px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  header .title { display: flex; align-items: baseline; gap: 12px; }
+  header h1 { margin: 0; font-size: 26px; letter-spacing: -0.5px; }
+  header .subtitle { color: #b8c2cc; font-size: 14px; }
+  #status-dot {
+    display: inline-block;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--red);
+    margin-right: 6px;
+  }
+  #status-dot.ok { background: var(--green); }
+  .status-pill {
+    background: var(--navy-light);
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+  }
+
+  .settings {
+    background: #1c2733;
+    padding: 14px 28px;
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    border-bottom: 3px solid var(--orange);
+  }
+  .settings label {
+    display: block;
+    color: #b8c2cc;
+    font-size: 12px;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .settings input {
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid #3a4a5c;
+    background: #10181f;
+    color: #fff;
+    font-size: 14px;
+    width: 320px;
+    max-width: 60vw;
+  }
+  .settings input#apiKey { width: 260px; }
+  .settings button.small {
+    padding: 9px 16px;
+    border-radius: 6px;
+    border: none;
+    background: var(--orange);
+    color: var(--navy);
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  main {
+    max-width: 1200px;
+    margin: 28px auto;
+    padding: 0 24px 60px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: var(--card);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    padding: 22px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .card h2 {
+    margin: 0 0 4px;
+    font-size: 18px;
+  }
+  .card .desc {
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 18px;
+  }
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--text);
+  }
+  .field select, .field input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    background: #fff;
+    color: var(--text);
+  }
+  button.primary {
+    background: var(--navy);
+    color: #fff;
+    border: none;
+    padding: 11px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    width: 100%;
+  }
+  button.primary:hover { background: var(--navy-light); }
+  button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .quick-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .quick-actions button {
+    background: #fff;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 12px;
+    border-radius: 20px;
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+  .quick-actions button:hover { border-color: var(--orange); color: var(--navy); }
+
+  .result-banner {
+    margin-top: 14px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    display: none;
+  }
+  .result-banner.show { display: block; }
+  .result-banner.ok { background: #e8f6ee; color: var(--green); border: 1px solid #b7e4c9; }
+  .result-banner.err { background: #fdecea; color: var(--red); border: 1px solid #f5c2bc; }
+
+  .rec-grid {
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .rec-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    background: #fbfcfd;
+  }
+  .rec-card .name { font-weight: 700; font-size: 14px; }
+  .rec-card .meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .rec-card .score {
+    display: inline-block;
+    margin-top: 8px;
+    background: var(--orange);
+    color: var(--navy);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+  }
+  .empty-note {
+    color: var(--muted);
+    font-size: 13.5px;
+    margin-top: 14px;
+  }
+
+  .console {
+    grid-column: 1 / -1;
+  }
+  .console pre {
+    background: #10181f;
+    color: #b8f0c8;
+    padding: 16px;
+    border-radius: 10px;
+    font-size: 12.5px;
+    max-height: 220px;
+    overflow: auto;
+    margin: 0;
+    font-family: "SFMono-Regular", Consolas, monospace;
+  }
+</style>
+
+<header>
+  <div class="title">
+    <h1>SmartPicks</h1>
+    <span class="subtitle">Serverless recommendation engine — live demo</span>
+  </div>
+  <div class="status-pill"><span id="status-dot"></span><span id="status-text">Not connected</span></div>
+</header>
+
+<div class="settings">
+  <div>
+    <label for="apiBase">API Endpoint</label>
+    <input id="apiBase" type="text" placeholder="https://xxxx.execute-api.us-east-1.amazonaws.com" />
+  </div>
+  <div>
+    <label for="apiKey">x-api-key</label>
+    <input id="apiKey" type="password" placeholder="paste your api_key value" />
+  </div>
+  <button class="small" onclick="checkConnection()">Connect</button>
+</div>
+
+<main>
+  <div class="card">
+    <h2>Record an Event</h2>
+    <div class="desc">Simulates a user viewing, adding to cart, or purchasing a product. Feeds the recommendation engine.</div>
+
+    <div class="field">
+      <label>User</label>
+      <select id="evtUser">
+        <option>user1</option><option>user2</option><option>user3</option>
+        <option>user4</option><option>user5</option><option>user6</option>
+        <option>user7 (new)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Product</label>
+      <select id="evtProduct"></select>
+    </div>
+    <div class="field">
+      <label>Event Type</label>
+      <select id="evtType">
+        <option value="purchase">Purchase</option>
+        <option value="add_to_cart">Add to Cart</option>
+        <option value="view">View</option>
+      </select>
+    </div>
+    <button class="primary" onclick="recordEvent()">Send Event</button>
+
+    <div class="quick-actions">
+      <button onclick="quickEvent('user7 (new)','p4','purchase')">user7 buys Yoga Mat</button>
+      <button onclick="quickEvent('user2','p1','purchase')">user2 buys Wireless Mouse</button>
+      <button onclick="quickEvent('user5','p6','view')">user5 views Water Bottle</button>
+    </div>
+
+    <div id="evtBanner" class="result-banner"></div>
+  </div>
+
+  <div class="card">
+    <h2>Get Recommendations</h2>
+    <div class="desc">Reads the precomputed RecommendationCache for a user — no live computation, single-digit-ms DynamoDB read.</div>
+
+    <div class="field">
+      <label>User</label>
+      <select id="recUser">
+        <option>user1</option><option>user2</option><option>user3</option>
+        <option>user4</option><option>user5</option><option>user6</option>
+        <option>user7 (new)</option>
+      </select>
+    </div>
+    <button class="primary" onclick="getRecommendations()">Get Recommendations</button>
+
+    <div id="recBanner" class="result-banner"></div>
+    <div id="recGrid" class="rec-grid"></div>
+    <div id="recEmpty" class="empty-note" style="display:none;">
+      No recommendations yet — this user has no purchase history in the cache,
+      or the nightly recompute job hasn't run since their last purchase.
+      Try recording a purchase above, then re-running the recompute Lambda.
+    </div>
+  </div>
+
+  <div class="card console">
+    <h2>Raw API Response</h2>
+    <div class="desc">Exactly what the API returned — useful to show the JSON contract live.</div>
+    <pre id="rawLog">Waiting for a request…</pre>
+  </div>
+</main>
+
+<script>
+  const CATALOG = {
+    p1: { name: "Wireless Mouse", category: "electronics", price: "25.00" },
+    p2: { name: "Mechanical Keyboard", category: "electronics", price: "80.00" },
+    p3: { name: "USB-C Hub", category: "electronics", price: "35.00" },
+    p4: { name: "Yoga Mat", category: "fitness", price: "20.00" },
+    p5: { name: "Resistance Bands", category: "fitness", price: "15.00" },
+    p6: { name: "Water Bottle", category: "fitness", price: "18.00" },
+    p7: { name: "Novel: Dune", category: "books", price: "12.00" },
+    p8: { name: "Novel: Foundation", category: "books", price: "14.00" },
+  };
+
+  function normalizeUserId(v) {
+    return v.replace(" (new)", "");
+  }
+
+  function populateProductSelect() {
+    const sel = document.getElementById("evtProduct");
+    sel.innerHTML = Object.entries(CATALOG)
+      .map(([id, p]) => `<option value="${id}">${p.name} (${id})</option>`)
+      .join("");
+  }
+  populateProductSelect();
+
+  const DEFAULT_API_BASE = "https://n6w06iktj8.execute-api.us-east-1.amazonaws.com";
+
+  function loadSettings() {
+    document.getElementById("apiBase").value = localStorage.getItem("sp_apiBase") || DEFAULT_API_BASE;
+    document.getElementById("apiKey").value = localStorage.getItem("sp_apiKey") || "";
+  }
+  function saveSettings() {
+    localStorage.setItem("sp_apiBase", document.getElementById("apiBase").value.trim());
+    localStorage.setItem("sp_apiKey", document.getElementById("apiKey").value.trim());
+  }
+  loadSettings();
+
+  function apiBase() { return document.getElementById("apiBase").value.trim().replace(/\/$/, ""); }
+  function apiKey() { return document.getElementById("apiKey").value.trim(); }
+
+  function logRaw(obj) {
+    document.getElementById("rawLog").textContent =
+      typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
+  }
+
+  function setStatus(ok, text) {
+    document.getElementById("status-dot").classList.toggle("ok", ok);
+    document.getElementById("status-text").textContent = text;
+  }
+
+  async function checkConnection() {
+    saveSettings();
+    if (!apiBase() || !apiKey()) {
+      setStatus(false, "Missing endpoint or key");
+      return;
+    }
+    setStatus(false, "Connecting…");
+    try {
+      const res = await fetch(`${apiBase()}/recommendations/__ping__`, {
+        headers: { "x-api-key": apiKey() },
+      });
+      if (res.status === 401) {
+        setStatus(false, "Unauthorized — check API key");
+      } else {
+        setStatus(true, "Connected");
+      }
+    } catch (e) {
+      setStatus(false, "Unreachable — check endpoint / CORS");
+    }
+  }
+
+  function showBanner(id, ok, text) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = "result-banner show " + (ok ? "ok" : "err");
+  }
+
+  async function recordEvent() {
+    saveSettings();
+    const userId = normalizeUserId(document.getElementById("evtUser").value);
+    const productId = document.getElementById("evtProduct").value;
+    const eventType = document.getElementById("evtType").value;
+    await sendEvent(userId, productId, eventType, "evtBanner");
+  }
+
+  async function quickEvent(user, productId, eventType) {
+    saveSettings();
+    await sendEvent(normalizeUserId(user), productId, eventType, "evtBanner");
+  }
+
+  async function sendEvent(userId, productId, eventType, bannerId) {
+    if (!apiBase() || !apiKey()) {
+      showBanner(bannerId, false, "Set the API endpoint and key above first.");
+      return;
+    }
+    try {
+      const res = await fetch(`${apiBase()}/events`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": apiKey() },
+        body: JSON.stringify({ userId, productId, eventType }),
+      });
+      const body = await res.json().catch(() => ({}));
+      logRaw({ status: res.status, body });
+      if (res.ok) {
+        showBanner(bannerId, true, `Recorded: ${userId} ${eventType} ${CATALOG[productId]?.name || productId}`);
+        setStatus(true, "Connected");
+      } else if (res.status === 401) {
+        showBanner(bannerId, false, "Unauthorized — check your x-api-key.");
+        setStatus(false, "Unauthorized — check API key");
+      } else {
+        showBanner(bannerId, false, `Error ${res.status}: ${body.error || "request failed"}`);
+      }
+    } catch (e) {
+      showBanner(bannerId, false, "Request failed — check endpoint / network / CORS.");
+      logRaw(String(e));
+    }
+  }
+
+  async function getRecommendations() {
+    saveSettings();
+    const userId = normalizeUserId(document.getElementById("recUser").value);
+    const grid = document.getElementById("recGrid");
+    const empty = document.getElementById("recEmpty");
+    grid.innerHTML = "";
+    empty.style.display = "none";
+
+    if (!apiBase() || !apiKey()) {
+      showBanner("recBanner", false, "Set the API endpoint and key above first.");
+      return;
+    }
+    try {
+      const res = await fetch(`${apiBase()}/recommendations/${encodeURIComponent(userId)}`, {
+        headers: { "x-api-key": apiKey() },
+      });
+      const body = await res.json().catch(() => ({}));
+      logRaw({ status: res.status, body });
+
+      if (res.status === 401) {
+        showBanner("recBanner", false, "Unauthorized — check your x-api-key.");
+        setStatus(false, "Unauthorized — check API key");
+        return;
+      }
+      if (!res.ok) {
+        showBanner("recBanner", false, `Error ${res.status}: ${body.error || "request failed"}`);
+        return;
+      }
+      setStatus(true, "Connected");
+      document.getElementById("recBanner").className = "result-banner";
+
+      const recs = body.recommendations || [];
+      if (recs.length === 0) {
+        empty.style.display = "block";
+        return;
+      }
+      const scores = body.scores || {};
+      grid.innerHTML = recs.map((pid) => {
+        const p = CATALOG[pid] || { name: pid, category: "?", price: "?" };
+        const score = scores[pid];
+        return `<div class="rec-card">
+          <div class="name">${p.name}</div>
+          <div class="meta">${p.category} · $${p.price}</div>
+          ${score !== undefined ? `<div class="score">score ${score}</div>` : ""}
+        </div>`;
+      }).join("");
+    } catch (e) {
+      showBanner("recBanner", false, "Request failed — check endpoint / network / CORS.");
+      logRaw(String(e));
+    }
+  }
+
+  if (apiBase() && apiKey()) checkConnection();
+</script>

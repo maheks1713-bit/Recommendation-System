@@ -15,6 +15,14 @@ resource "aws_dynamodb_table" "user_events" {
     type = "S"
   }
 
+  point_in_time_recovery {
+    enabled = true
+  }
+
+  server_side_encryption {
+    enabled = true
+  }
+
   tags = {
     Project     = var.project_name
     Environment = var.environment
@@ -34,6 +42,14 @@ resource "aws_dynamodb_table" "recommendation_cache" {
     type = "S"
   }
 
+  point_in_time_recovery {
+    enabled = true
+  }
+
+  server_side_encryption {
+    enabled = true
+  }
+
   tags = {
     Project     = var.project_name
     Environment = var.environment
@@ -49,6 +65,14 @@ resource "aws_dynamodb_table" "product_catalog" {
   attribute {
     name = "productId"
     type = "S"
+  }
+
+  point_in_time_recovery {
+    enabled = true
+  }
+
+  server_side_encryption {
+    enabled = true
   }
 
   tags = {

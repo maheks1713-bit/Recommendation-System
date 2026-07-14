@@ -1,6 +1,13 @@
 resource "aws_apigatewayv2_api" "smartpicks_api" {
   name          = "${var.project_name}-api-${var.environment}"
   protocol_type = "HTTP"
+
+  cors_configuration {
+    allow_origins = ["*"]
+    allow_methods = ["GET", "POST", "OPTIONS"]
+    allow_headers = ["content-type", "x-api-key"]
+    max_age       = 300
+  }
 }
 
 resource "aws_apigatewayv2_stage" "default" {
@@ -11,12 +18,12 @@ resource "aws_apigatewayv2_stage" "default" {
   access_log_settings {
     destination_arn = aws_cloudwatch_log_group.api_gw_logs.arn
     format = jsonencode({
-      requestId      = "$context.requestId"
-      ip              = "$context.identity.sourceIp"
-      requestTime     = "$context.requestTime"
-      httpMethod      = "$context.httpMethod"
-      routeKey        = "$context.routeKey"
-      status          = "$context.status"
+      requestId        = "$context.requestId"
+      ip               = "$context.identity.sourceIp"
+      requestTime      = "$context.requestTime"
+      httpMethod       = "$context.httpMethod"
+      routeKey         = "$context.routeKey"
+      status           = "$context.status"
       integrationError = "$context.integrationErrorMessage"
     })
   }
@@ -25,6 +32,25 @@ resource "aws_apigatewayv2_stage" "default" {
 resource "aws_cloudwatch_log_group" "api_gw_logs" {
   name              = "/aws/apigateway/${var.project_name}-${var.environment}"
   retention_in_days = 14
+}
+
+# --- Shared x-api-key authorizer for all routes ---
+resource "aws_apigatewayv2_authorizer" "api_key" {
+  api_id                            = aws_apigatewayv2_api.smartpicks_api.id
+  authorizer_type                   = "REQUEST"
+  name                              = "${var.project_name}-api-key-authorizer-${var.environment}"
+  authorizer_uri                    = aws_lambda_function.authorizer.invoke_arn
+  authorizer_payload_format_version = "2.0"
+  enable_simple_responses           = true
+  identity_sources                  = ["$request.header.x-api-key"]
+}
+
+resource "aws_lambda_permission" "allow_apigw_authorizer" {
+  statement_id  = "AllowAPIGatewayInvokeAuthorizer"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.authorizer.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.smartpicks_api.execution_arn}/*/*"
 }
 
 # --- POST /events -> ingest Lambda ---
@@ -36,9 +62,11 @@ resource "aws_apigatewayv2_integration" "ingest_integration" {
 }
 
 resource "aws_apigatewayv2_route" "post_events" {
-  api_id    = aws_apigatewayv2_api.smartpicks_api.id
-  route_key = "POST /events"
-  target    = "integrations/${aws_apigatewayv2_integration.ingest_integration.id}"
+  api_id             = aws_apigatewayv2_api.smartpicks_api.id
+  route_key          = "POST /events"
+  target             = "integrations/${aws_apigatewayv2_integration.ingest_integration.id}"
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.api_key.id
 }
 
 resource "aws_lambda_permission" "allow_apigw_ingest" {
@@ -58,9 +86,11 @@ resource "aws_apigatewayv2_integration" "recommend_integration" {
 }
 
 resource "aws_apigatewayv2_route" "get_recommendations" {
-  api_id    = aws_apigatewayv2_api.smartpicks_api.id
-  route_key = "GET /recommendations/{userId}"
-  target    = "integrations/${aws_apigatewayv2_integration.recommend_integration.id}"
+  api_id             = aws_apigatewayv2_api.smartpicks_api.id
+  route_key          = "GET /recommendations/{userId}"
+  target             = "integrations/${aws_apigatewayv2_integration.recommend_integration.id}"
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.api_key.id
 }
 
 resource "aws_lambda_permission" "allow_apigw_recommend" {

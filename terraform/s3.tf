@@ -38,6 +38,30 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "event_archive_sse
   }
 }
 
+resource "aws_s3_bucket_policy" "event_archive_tls_only" {
+  bucket = aws_s3_bucket.event_archive.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "DenyInsecureTransport"
+        Effect    = "Deny"
+        Principal = "*"
+        Action    = "s3:*"
+        Resource = [
+          aws_s3_bucket.event_archive.arn,
+          "${aws_s3_bucket.event_archive.arn}/*",
+        ]
+        Condition = {
+          Bool = {
+            "aws:SecureTransport" = "false"
+          }
+        }
+      }
+    ]
+  })
+}
+
 resource "aws_s3_bucket_lifecycle_configuration" "event_archive_lifecycle" {
   bucket = aws_s3_bucket.event_archive.id
   rule {
